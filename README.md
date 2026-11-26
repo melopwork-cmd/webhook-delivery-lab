@@ -28,7 +28,7 @@ $env:WEBHOOK_DESTINATION = 'http://127.0.0.1:4000/webhook'
 npm start
 ~~~
 
-In a third window, queue an event and check its status after a few seconds.
+In a third window, queue an event and check its status after a few seconds. Successful submissions include the status path in the `Location` header.
 
 ~~~powershell
 $event = @{ id = 'order-123'; payload = @{ status = 'paid' } } | ConvertTo-Json -Compress
