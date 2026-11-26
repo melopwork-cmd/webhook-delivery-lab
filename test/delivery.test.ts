@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { createHmac } from 'node:crypto';
 import { request } from 'node:http';
 import { mkdtempSync, readdirSync, rmdirSync, unlinkSync } from 'node:fs';
@@ -69,6 +70,23 @@ test('HTTP ingestion keeps duplicates idempotent and exposes delivery state', as
   }
   const failures = await (await fetch(`${failedUrl}?limit=1`)).json();
   assert.deepEqual(failures, [{ id: 'second', state: 'failed', attempts: 1, due_at: 50, last_error: 'Test failure' }]);
+});
+
+test('invalid worker polling configuration stops before startup', () => {
+  const result = spawnSync(process.execPath, ['src/main.ts'], {
+    cwd: new URL('..', import.meta.url),
+    env: {
+      ...process.env,
+      PORT: '3000',
+      WEBHOOK_DESTINATION: 'http://127.0.0.1:4000/webhook',
+      WEBHOOK_SECRET: 'example-secret-for-tests',
+      WEBHOOK_POLL_MS: '0',
+    },
+    encoding: 'utf8',
+    timeout: 4000,
+  });
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /WEBHOOK_POLL_MS must be an integer/);
 });
 
 test('retry listing shows the earliest retry first', async t => {
