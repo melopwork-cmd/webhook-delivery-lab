@@ -71,6 +71,26 @@ test('HTTP ingestion keeps duplicates idempotent and exposes delivery state', as
   assert.deepEqual(failures, [{ id: 'second', state: 'failed', attempts: 1, due_at: 50, last_error: 'Test failure' }]);
 });
 
+test('retry listing shows the earliest retry first', async t => {
+  const store = new DeliveryStore(':memory:');
+  const server = createApi(store);
+  t.after(() => { server.close(); store.close(); });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert(address && typeof address !== 'string');
+  const url = 'http://127.0.0.1:' + address.port + '/queue/retries';
+  for (const [id, due] of [['later', 500], ['sooner', 100]] as const) {
+    store.add(id, '{}', 10);
+    const claimed = store.claim(10, 5, 2);
+    assert(claimed);
+    store.finish(claimed, 'retry', due, 'Temporary failure');
+  }
+  store.add('queued', '{}', 1);
+  const entries = await (await fetch(url + '?limit=1')).json();
+  assert.deepEqual(entries, [{ id: 'sooner', state: 'retry', attempts: 1, due_at: 100, last_error: 'Temporary failure' }]);
+  assert.equal((await fetch(url + '?limit=0')).status, 400);
+});
+
 test('transient responses retry only when due and sign the original payload', async t => {
   const store = new DeliveryStore(':memory:');
   t.after(() => store.close());
