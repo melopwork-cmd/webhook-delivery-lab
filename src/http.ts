@@ -29,6 +29,10 @@ export function createApi(store: DeliveryStore) {
         return reply(res, 200, { status: 'ok' });
       }
 
+      if (req.method === 'GET' && path === '/queue/status') {
+        return reply(res, 200, store.counts());
+      }
+
       if (req.method === 'GET' && path.startsWith('/events/')) {
         const id = path.slice('/events/'.length);
         const entry = ID.test(id) ? store.status(id) : undefined;
