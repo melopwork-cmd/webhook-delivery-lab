@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
+import { request } from 'node:http';
 import { mkdtempSync, readdirSync, rmdirSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -42,6 +43,16 @@ test('HTTP ingestion keeps duplicates idempotent and exposes delivery state', as
   assert.equal((await post({ ...event, payload: { status: 'changed' } })).status, 409);
   assert.equal((await post({ id: '../unsafe' })).status, 400);
   assert.equal((await post({ ...event, payload: 'x'.repeat(65_536) })).status, 413);
+  const chunkedStatus = await new Promise<number | undefined>((resolve, reject) => {
+    const outgoing = request(url, { method: 'POST', headers: { 'content-type': 'application/json' } }, reply => {
+      reply.resume();
+      resolve(reply.statusCode);
+    });
+    outgoing.on('error', reject);
+    outgoing.write('x'.repeat(65_536));
+    outgoing.end('x');
+  });
+  assert.equal(chunkedStatus, 413);
   const status = await fetch(url + '/demo-1');
   assert.equal((await status.json()).state, 'queued');
   assert.deepEqual(await (await fetch(queueUrl)).json(), { queued: 1, sending: 0, retry: 0, delivered: 0, failed: 0 });
