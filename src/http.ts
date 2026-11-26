@@ -78,9 +78,11 @@ export function createApi(store: DeliveryStore) {
         return reply(res, 400, { error: 'Provide a valid id and a JSON payload' });
       }
       const status = store.add(event.id, JSON.stringify(event.payload), Date.now());
-      return status === 'conflict'
-        ? reply(res, 409, { error: 'The event id already exists with a different payload' })
-        : reply(res, status === 'created' ? 202 : 200, { id: event.id, status });
+      if (status === 'conflict') {
+        return reply(res, 409, { error: 'The event id already exists with a different payload' });
+      }
+      res.setHeader('location', '/events/' + event.id);
+      return reply(res, status === 'created' ? 202 : 200, { id: event.id, status });
     } catch {
       if (!res.headersSent && !res.destroyed) reply(res, 500, { error: 'Could not process the request' });
     }

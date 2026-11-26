@@ -38,8 +38,12 @@ test('HTTP ingestion keeps duplicates idempotent and exposes delivery state', as
   const queueUrl = new URL('/queue/status', url);
   assert.deepEqual(await (await fetch(queueUrl)).json(), { queued: 0, sending: 0, retry: 0, delivered: 0, failed: 0 });
   const event = { id: 'demo-1', payload: { status: 'ready' } };
-  assert.equal((await post(event)).status, 202);
-  assert.equal((await post(event)).status, 200);
+  const accepted = await post(event);
+  const duplicate = await post(event);
+  assert.equal(accepted.status, 202);
+  assert.equal(duplicate.status, 200);
+  assert.equal(accepted.headers.get('location'), '/events/demo-1');
+  assert.equal(duplicate.headers.get('location'), accepted.headers.get('location'));
   assert.equal((await post({ ...event, payload: { status: 'changed' } })).status, 409);
   assert.equal((await post({ id: '../unsafe' })).status, 400);
   assert.equal((await post({ ...event, payload: 'x'.repeat(65_536) })).status, 413);
@@ -53,7 +57,7 @@ test('HTTP ingestion keeps duplicates idempotent and exposes delivery state', as
     outgoing.end('x');
   });
   assert.equal(chunkedStatus, 413);
-  const status = await fetch(url + '/demo-1');
+  const status = await fetch(new URL(accepted.headers.get('location')!, url));
   assert.equal((await status.json()).state, 'queued');
   assert.deepEqual(await (await fetch(queueUrl)).json(), { queued: 1, sending: 0, retry: 0, delivered: 0, failed: 0 });
 
