@@ -64,3 +64,5 @@ Independent portfolio project, built with AI assistance.
 `GET /queue/retries?limit=25` lists pending retries by their next due time, earliest first.
 
 `GET /queue/next` returns the earliest queued or retry `due_at` in Unix milliseconds, or `null` if there are no scheduled deliveries.
+
+Set `WEBHOOK_POLL_MS` to an integer from 1 to 60000 to configure the delivery worker polling interval. The default is 250 milliseconds.

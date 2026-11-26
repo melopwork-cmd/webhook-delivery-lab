@@ -5,11 +5,15 @@ import { DeliveryStore } from './store.ts';
 const destination = process.env.WEBHOOK_DESTINATION;
 const secret = process.env.WEBHOOK_SECRET;
 const port = Number(process.env.PORT ?? 3000);
+const pollMs = Number(process.env.WEBHOOK_POLL_MS ?? 250);
 
 if (!destination || !secret || secret.length < 16) {
   throw new Error('Set WEBHOOK_DESTINATION and a WEBHOOK_SECRET of at least 16 characters');
 }
 if (!Number.isInteger(port) || port < 1 || port > 65_535) throw new Error('PORT must be a valid port');
+if (!Number.isInteger(pollMs) || pollMs < 1 || pollMs > 60_000) {
+  throw new Error('WEBHOOK_POLL_MS must be an integer between 1 and 60000');
+}
 const endpoint = new URL(destination);
 const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(endpoint.hostname);
 if ((endpoint.protocol !== 'https:' && !(endpoint.protocol === 'http:' && loopback)) ||
@@ -28,7 +32,7 @@ const timer = setInterval(() => {
   void running.catch(error => console.error('Delivery worker error:', error.message)).finally(() => {
     running = undefined;
   });
-}, 250);
+}, pollMs);
 
 let stopping = false;
 const stop = () => {
