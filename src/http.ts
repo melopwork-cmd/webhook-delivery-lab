@@ -56,6 +56,10 @@ export function createApi(store: DeliveryStore) {
         return reply(res, 415, { error: 'Send application/json' });
       }
 
+      if (Number(req.headers['content-length']) > LIMIT) {
+        req.resume();
+        return reply(res, 413, { error: 'Body exceeds 64 KiB' });
+      }
       const raw = await readBody(req);
       if (!raw) return reply(res, 413, { error: 'Body exceeds 64 KiB' });
       let event: unknown;
