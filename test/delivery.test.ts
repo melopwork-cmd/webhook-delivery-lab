@@ -72,6 +72,28 @@ test('transient responses retry only when due and sign the original payload', as
   assert.equal(store.status('event-1')?.attempts, 2);
 });
 
+test('retry scheduling honors later receiver deadlines and ignores malformed or past values', async () => {
+  const now = 1_790_000_000_000;
+  const replies = [
+    { code: 429, header: '90', delay: 90_000 },
+    { code: 503, header: new Date(now + 120_000).toUTCString(), delay: 120_000 },
+    { code: 429, header: '2.5', delay: 100 },
+    { code: 503, header: new Date(now - 1000).toUTCString(), delay: 100 },
+  ];
+  for (const reply of replies) {
+    const store = new DeliveryStore(':memory:');
+    try {
+      store.add('retry', '{}', now);
+      await deliverOne(store, options, () => now, async () =>
+        new Response(null, { status: reply.code, headers: { 'retry-after': reply.header } }));
+      assert.equal(store.status('retry')?.state, 'retry');
+      assert.equal(store.status('retry')?.due_at, now + reply.delay);
+    } finally {
+      store.close();
+    }
+  }
+});
+
 test('HTTP 400 fails immediately and repeated transport errors stop at the attempt limit', async t => {
   const store = new DeliveryStore(':memory:');
   t.after(() => store.close());

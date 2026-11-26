@@ -14,6 +14,18 @@ export function sign(secret: string, id: string, timestamp: string, payload: str
   return 'v1=' + createHmac('sha256', secret).update(id + '.' + timestamp + '.' + payload).digest('hex');
 }
 
+function retryDeadline(value: string | null, receivedAt: number): number {
+  const header = value?.trim() ?? '';
+  if (/^\d+$/.test(header)) {
+    const deadline = receivedAt + Number(header) * 1000;
+    return Number.isSafeInteger(deadline) ? deadline : 0;
+  }
+  const httpDate = /^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*[ ,]/;
+  const date = header.includes(',') ? header : header + ' GMT';
+  const deadline = httpDate.test(header) ? Date.parse(date) : NaN;
+  return Number.isFinite(deadline) ? deadline : 0;
+}
+
 export async function deliverOne(
   store: DeliveryStore,
   options: DeliveryOptions,
@@ -27,6 +39,7 @@ export async function deliverOne(
   const timestamp = String(Math.floor(now() / 1000));
   let failure: string;
   let retryable = true;
+  let requestedDeadline = 0;
   try {
     const result = await request(options.endpoint, {
       method: 'POST',
@@ -47,6 +60,7 @@ export async function deliverOne(
     }
     failure = 'Receiver returned HTTP ' + result.status;
     retryable = result.status === 408 || result.status === 429 || result.status >= 500;
+    if (retryable) requestedDeadline = retryDeadline(result.headers.get('retry-after'), now());
   } catch {
     failure = 'Receiver request failed or timed out';
   }
@@ -55,7 +69,7 @@ export async function deliverOne(
     store.finish(event, 'failed', now(), failure);
   } else {
     const delay = Math.min(60_000, options.baseDelayMs * 2 ** (event.attempts - 1));
-    store.finish(event, 'retry', now() + delay, failure);
+    store.finish(event, 'retry', Math.max(now() + delay, requestedDeadline), failure);
   }
   return true;
 }

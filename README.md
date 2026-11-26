@@ -41,7 +41,7 @@ The event should reach delivered after two attempts. Choose a new ID on subseque
 ## Delivery behavior
 
 - Reusing an event ID with the same serialized payload returns the existing entry. Reusing it with a different payload returns HTTP 409.
-- Timeouts, connection errors, HTTP 408 and 429, and 5xx responses retry with capped exponential backoff. Other errors fail immediately.
+- Timeouts, connection errors, HTTP 408 and 429, and 5xx responses retry with capped exponential backoff. Other errors fail immediately. If a retryable response includes a valid Retry-After value, the worker waits until the later of the receiver's deadline and its normal backoff.
 - A delivery is leased with a unique claim token. A restarted worker can reclaim an expired lease, and a stale worker cannot update the newer claim.
 - Delivery is at least once. A receiver can use X-Event-Id to suppress duplicates after a delivered response is lost.
 - The signature is HMAC-SHA256 over the event ID, Unix timestamp, and exact request body, joined with periods. The included receiver verifies the signature and checks timestamp freshness.
