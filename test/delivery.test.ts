@@ -79,6 +79,8 @@ test('retry listing shows the earliest retry first', async t => {
   const address = server.address();
   assert(address && typeof address !== 'string');
   const url = 'http://127.0.0.1:' + address.port + '/queue/retries';
+  const nextUrl = new URL('/queue/next', url);
+  assert.deepEqual(await (await fetch(nextUrl)).json(), { due_at: null });
   for (const [id, due] of [['later', 500], ['sooner', 100]] as const) {
     store.add(id, '{}', 10);
     const claimed = store.claim(10, 5, 2);
@@ -86,6 +88,10 @@ test('retry listing shows the earliest retry first', async t => {
     store.finish(claimed, 'retry', due, 'Temporary failure');
   }
   store.add('queued', '{}', 1);
+  assert.deepEqual(await (await fetch(nextUrl)).json(), { due_at: 1 });
+  const sending = store.claim(1, 100, 2);
+  assert.equal(sending?.id, 'queued');
+  assert.deepEqual(await (await fetch(nextUrl)).json(), { due_at: 100 });
   const entries = await (await fetch(url + '?limit=1')).json();
   assert.deepEqual(entries, [{ id: 'sooner', state: 'retry', attempts: 1, due_at: 100, last_error: 'Temporary failure' }]);
   assert.equal((await fetch(url + '?limit=0')).status, 400);

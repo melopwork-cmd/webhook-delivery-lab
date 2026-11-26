@@ -62,3 +62,5 @@ Independent portfolio project, built with AI assistance.
 `GET /queue/failed?limit=25` lists failed delivery statuses. Results include attempt counts and the last recorded error. The limit must be between 1 and 100.
 
 `GET /queue/retries?limit=25` lists pending retries by their next due time, earliest first.
+
+`GET /queue/next` returns the earliest queued or retry `due_at` in Unix milliseconds, or `null` if there are no scheduled deliveries.

@@ -29,6 +29,10 @@ export function createApi(store: DeliveryStore) {
         return reply(res, 200, { status: 'ok' });
       }
 
+      if (req.method === 'GET' && path === '/queue/next') {
+        return reply(res, 200, { due_at: store.nextDue() });
+      }
+
       if (req.method === 'GET' && path === '/queue/status') {
         return reply(res, 200, store.counts());
       }
