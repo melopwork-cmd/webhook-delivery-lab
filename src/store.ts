@@ -51,6 +51,13 @@ export class DeliveryStore {
     return counts;
   }
 
+  nextDue(): number | null {
+    const row = this.db.prepare(
+      "SELECT MIN(due_at) AS earliest FROM deliveries WHERE state IN ('queued', 'retry')",
+    ).get();
+    return row?.earliest == null ? null : Number(row.earliest);
+  }
+
   failed(limit: number): DeliveryStatus[] {
     return this.db.prepare(
       "SELECT id, state, attempts, due_at, last_error FROM deliveries WHERE state = 'failed' " +
