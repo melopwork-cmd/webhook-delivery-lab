@@ -58,6 +58,13 @@ export class DeliveryStore {
     ).all(limit) as DeliveryStatus[];
   }
 
+  retries(limit: number): DeliveryStatus[] {
+    return this.db.prepare(
+      "SELECT id, state, attempts, due_at, last_error FROM deliveries WHERE state = 'retry' " +
+      'ORDER BY due_at, id LIMIT ?',
+    ).all(limit) as DeliveryStatus[];
+  }
+
   status(id: string): DeliveryStatus | undefined {
     return this.db.prepare('SELECT id, state, attempts, due_at, last_error FROM deliveries WHERE id = ?')
       .get(id) as DeliveryStatus | undefined;
