@@ -1,0 +1,19 @@
+{
+  "name": "webhook-delivery-lab",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node src/main.ts",
+    "demo": "node demo/receiver.ts",
+    "test": "node --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.4",
+    "typescript": "^7.0.2"
+  }
+}
