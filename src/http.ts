@@ -33,6 +33,15 @@ export function createApi(store: DeliveryStore) {
         return reply(res, 200, store.counts());
       }
 
+      if (req.method === 'GET' && path === '/queue/failed') {
+        const search = (req.url ?? '').split('?', 2)[1];
+        const limit = new URLSearchParams(search).get('limit') ?? '25';
+        if (!/^\d+$/.test(limit) || Number(limit) < 1 || Number(limit) > 100) {
+          return reply(res, 400, { error: 'Limit must be between 1 and 100' });
+        }
+        return reply(res, 200, store.failed(Number(limit)));
+      }
+
       if (req.method === 'GET' && path.startsWith('/events/')) {
         const id = path.slice('/events/'.length);
         const entry = ID.test(id) ? store.status(id) : undefined;

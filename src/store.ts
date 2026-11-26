@@ -51,6 +51,13 @@ export class DeliveryStore {
     return counts;
   }
 
+  failed(limit: number): DeliveryStatus[] {
+    return this.db.prepare(
+      "SELECT id, state, attempts, due_at, last_error FROM deliveries WHERE state = 'failed' " +
+      'ORDER BY due_at DESC, id ASC LIMIT ?',
+    ).all(limit) as DeliveryStatus[];
+  }
+
   status(id: string): DeliveryStatus | undefined {
     return this.db.prepare('SELECT id, state, attempts, due_at, last_error FROM deliveries WHERE id = ?')
       .get(id) as DeliveryStatus | undefined;
