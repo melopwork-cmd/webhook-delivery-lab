@@ -54,3 +54,7 @@ The service listens on loopback and sends to one operator-configured destination
 - [RFC 2104 on HMAC](https://www.rfc-editor.org/rfc/rfc2104)
 
 Independent portfolio project, built with AI assistance.
+
+### Queue status
+
+`GET /queue/status` returns queued, sending, retry, delivered, and failed counts. Empty states report zero.

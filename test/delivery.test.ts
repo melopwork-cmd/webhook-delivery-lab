@@ -34,6 +34,8 @@ test('HTTP ingestion keeps duplicates idempotent and exposes delivery state', as
     body: JSON.stringify(data),
   });
 
+  const queueUrl = new URL('/queue/status', url);
+  assert.deepEqual(await (await fetch(queueUrl)).json(), { queued: 0, sending: 0, retry: 0, delivered: 0, failed: 0 });
   const event = { id: 'demo-1', payload: { status: 'ready' } };
   assert.equal((await post(event)).status, 202);
   assert.equal((await post(event)).status, 200);
@@ -42,6 +44,7 @@ test('HTTP ingestion keeps duplicates idempotent and exposes delivery state', as
   assert.equal((await post({ ...event, payload: 'x'.repeat(65_536) })).status, 413);
   const status = await fetch(url + '/demo-1');
   assert.equal((await status.json()).state, 'queued');
+  assert.deepEqual(await (await fetch(queueUrl)).json(), { queued: 1, sending: 0, retry: 0, delivered: 0, failed: 0 });
 });
 
 test('transient responses retry only when due and sign the original payload', async t => {

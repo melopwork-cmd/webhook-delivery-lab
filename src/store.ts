@@ -44,6 +44,13 @@ export class DeliveryStore {
     return stored?.payload === payload ? 'duplicate' : 'conflict';
   }
 
+  counts(): Record<DeliveryState, number> {
+    const counts = { queued: 0, sending: 0, retry: 0, delivered: 0, failed: 0 };
+    const rows = this.db.prepare('SELECT state, COUNT(*) AS total FROM deliveries GROUP BY state').all();
+    for (const row of rows) counts[row.state as DeliveryState] = Number(row.total);
+    return counts;
+  }
+
   status(id: string): DeliveryStatus | undefined {
     return this.db.prepare('SELECT id, state, attempts, due_at, last_error FROM deliveries WHERE id = ?')
       .get(id) as DeliveryStatus | undefined;
