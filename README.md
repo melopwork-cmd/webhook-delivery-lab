@@ -58,3 +58,5 @@ Independent portfolio project, built with AI assistance.
 ### Queue status
 
 `GET /queue/status` returns queued, sending, retry, delivered, and failed counts. Empty states report zero.
+
+`GET /queue/failed?limit=25` lists failed delivery statuses. Results include attempt counts and the last recorded error. The limit must be between 1 and 100.

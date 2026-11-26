@@ -45,6 +45,19 @@ test('HTTP ingestion keeps duplicates idempotent and exposes delivery state', as
   const status = await fetch(url + '/demo-1');
   assert.equal((await status.json()).state, 'queued');
   assert.deepEqual(await (await fetch(queueUrl)).json(), { queued: 1, sending: 0, retry: 0, delivered: 0, failed: 0 });
+
+  const failedUrl = new URL('/queue/failed', url);
+  assert.deepEqual(await (await fetch(failedUrl)).json(), []);
+  assert.equal((await fetch(`${failedUrl}?limit=101`)).status, 400);
+  for (const [id, when] of [['first', 40], ['second', 50]] as const) {
+    store.add(id, '{"private":true}', when);
+    const job = store.claim(when, 100, 2);
+    assert.equal(job?.id, id);
+    assert(job);
+    store.finish(job, 'failed', when, 'Test failure');
+  }
+  const failures = await (await fetch(`${failedUrl}?limit=1`)).json();
+  assert.deepEqual(failures, [{ id: 'second', state: 'failed', attempts: 1, due_at: 50, last_error: 'Test failure' }]);
 });
 
 test('transient responses retry only when due and sign the original payload', async t => {
